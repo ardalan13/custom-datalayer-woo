@@ -3,11 +3,15 @@
  * A simple script to handle nonce integration and secure interactions
  */
 
-// Ensure the DOM is fully loaded before running any scripts
 document.addEventListener("DOMContentLoaded", () => {
     // Check if the nonce is set globally
-    if (typeof cdwNonce === "undefined" || cdwNonce === "") {
-        return;
+    if (typeof cdwNonce === "undefined" || !cdwNonce.nonce) {
+        return; // Nonce is not defined, exit silently
+    }
+
+    // Check if ajaxurl is defined
+    if (typeof ajaxurl === "undefined" || ajaxurl === "") {
+        return; // AJAX URL is not defined, exit silently
     }
 
     /**
@@ -17,36 +21,48 @@ document.addEventListener("DOMContentLoaded", () => {
      * @param {function} onSuccess - Callback for successful response
      * @param {function} onError - Callback for error response
      */
-    function sendSecureRequest(action, data = {}, onSuccess = null, onError = null) {
+    function sendSecureRequest(action, data = {}, onSuccess = () => {}, onError = () => {}) {
+        if (!action) {
+            return; // Action is required, exit silently
+        }
+
         // Ensure action and nonce are included
         data.action = action;
         data._ajax_nonce = cdwNonce.nonce;
 
         // Send the AJAX request
         jQuery.ajax({
-            url: ajaxurl, // WordPress provides this global variable
+            url: ajaxurl,
             type: "POST",
             data: data,
+            dataType: "json", // Expect JSON response
             success: function (response) {
-                if (typeof onSuccess === "function") {
-                    onSuccess(response);
+                if (response.success) {
+                    onSuccess(response.data || response);
+                } else {
+                    onError(response);
                 }
             },
             error: function (error) {
-                if (typeof onError === "function") {
-                    onError(error);
-                }
+                onError(error);
             },
         });
     }
 
     // Example usage of the secure AJAX function
-    document.getElementById("exampleButton")?.addEventListener("click", () => {
-        sendSecureRequest(
-            "cdw_secure_action",
-            { exampleData: "Some Data" },
-            (response) => alert("Request successful: " + response.message),
-            (error) => alert("Request failed: " + error.statusText)
-        );
-    });
+    const exampleButton = document.getElementById("exampleButton");
+    if (exampleButton) {
+        exampleButton.addEventListener("click", () => {
+            sendSecureRequest(
+                "cdw_secure_action",
+                { exampleData: "Some Data" },
+                (response) => {
+                    // Handle successful response silently
+                },
+                (error) => {
+                    // Handle error silently
+                }
+            );
+        });
+    }
 });

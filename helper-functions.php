@@ -1,12 +1,12 @@
 <?php
 // Prevent direct access
 if (!defined('ABSPATH')) {
-    exit;
+    exit; // Exit if accessed directly
 }
 
-if (!class_exists('CustomDatalayerHelperFunctions')) {
+if (!class_exists('CustomDatalayerWooHelperFunctions')) {
 
-    class CustomDatalayerHelperFunctions {
+    class CustomDatalayerWooHelperFunctions {
 
         /**
          * Get the main category of a product

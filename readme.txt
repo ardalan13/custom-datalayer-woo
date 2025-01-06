@@ -1,9 +1,9 @@
 === Custom Datalayer Woo ===
-Contributors: Ardalan Davoudi
+Contributors: ardalan13
 Tags: datalayer, google tag manager, contact information, performance marketing
 Requires at least: 5.0
 Tested up to: 6.7
-Stable tag: 1.3.1
+Stable tag: 1.5
 License: GPL2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -47,8 +47,8 @@ For further assistance, please contact:
 Once you have installed the plugin, please contact me to receive the Tag Manager settings for your site.
 
 == Changelog ==
-= 1.3.1 =
-* Initial release of the plugin.
+= 1.5 =
+* Add sessionStorage in purcahse events
 
 == Support ==
 For support, please contact me via the plugin page or email. ardalan.davodi@gmail.com
