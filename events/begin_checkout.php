@@ -1,61 +1,53 @@
 <?php
 // Prevent direct access
-if (!defined('ABSPATH')) {
-    exit;
-}
+if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
-// Add action to wp_footer to inject DataLayer script
-add_action('wp_footer', function () {
+// Add action to wp_enqueue_scripts to handle DataLayer script inclusion
+add_action('wp_enqueue_scripts', function () {
     if (is_checkout() && !is_order_received_page()) {
         // Retrieve applied coupons
         $coupons = WC()->cart->get_applied_coupons();
-        ?>
-        <script>
-            // Ensure dataLayer is initialized
+
+        // Prepare cart items data
+        $cart_items = [];
+        foreach (WC()->cart->get_cart() as $cart_item) {
+            $product = $cart_item['data'];
+            if ($product) {
+                $cart_items[] = [
+                    'item_id' => esc_js($cart_item['product_id']),
+                    'item_name' => esc_js($product->get_name()),
+                    'price' => floatval($product->get_price()),
+                    'quantity' => intval($cart_item['quantity']),
+                    'item_category' => esc_js(CustomDatalayerWooHelperFunctions::get_main_product_category($cart_item['product_id'])),
+                    'item_category2' => esc_js(CustomDatalayerWooHelperFunctions::get_secondary_product_category($cart_item['product_id'])),
+                    'item_category3' => esc_js(CustomDatalayerWooHelperFunctions::get_tertiary_product_category($cart_item['product_id'])),
+                ];
+            }
+        }
+
+        // Prepare customer and traffic source data
+        $customer_info = wp_json_encode(CustomDatalayerWooHelperFunctions::get_customer_info(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+        $traffic_source = wp_json_encode(CustomDatalayerWooHelperFunctions::get_traffic_source_info(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+
+        // Prepare inline script for dataLayer
+        $inline_script = "
             window.dataLayer = window.dataLayer || [];
-
-            // Push checkout data to the dataLayer
             dataLayer.push({
-                'event': 'begin_checkout', // The event name for beginning checkout
+                'event': 'begin_checkout',
                 'ecommerce': {
-                    'currency': 'USD', // Set the currency
-                    'value': parseFloat('<?php echo esc_js(WC()->cart->get_total('raw')); ?>'), // Total cart value
-                    'coupon': '<?php echo esc_attr(!empty($coupons) ? implode(", ", $coupons) : 'none'); ?>', // Applied coupons or 'none'
-                    'items': [
-                        <?php
-                        // Loop through cart items and prepare data
-                        foreach (WC()->cart->get_cart() as $cart_item) {
-                            $product = $cart_item['data'];
-                            if ($product) {
-                                // Safely retrieve and escape product data
-                                $product_id = esc_js($cart_item['product_id']);
-                                $product_name = esc_js($product->get_name());
-                                $product_price = esc_js($product->get_price());
-                                $product_quantity = intval($cart_item['quantity']);
-
-                                // Retrieve product categories
-                                $main_category = esc_js(CustomDatalayerHelperFunctions::get_main_product_category($cart_item['product_id']));
-                                $secondary_category = esc_js(CustomDatalayerHelperFunctions::get_secondary_product_category($cart_item['product_id']));
-                                $tertiary_category = esc_js(CustomDatalayerHelperFunctions::get_tertiary_product_category($cart_item['product_id']));
-                                ?>
-                                {
-                                    'item_id': '<?php echo $product_id; ?>', // Product ID
-                                    'item_name': '<?php echo $product_name; ?>', // Product name
-                                    'price': parseFloat('<?php echo $product_price; ?>'), // Product price (numeric)
-                                    'quantity': <?php echo $product_quantity; ?>, // Product quantity (integer)
-                                    'item_category': '<?php echo $main_category; ?>', // Main category
-                                    'item_category2': '<?php echo $secondary_category; ?>', // Secondary category
-                                    'item_category3': '<?php echo $tertiary_category; ?>' // Tertiary category
-                                },
-                                <?php
-                            }
-                        } ?>
-                    ]
+                    'currency': 'USD',
+                    'value': " . floatval(WC()->cart->get_total('raw')) . ",
+                    'coupon': '" . esc_js(!empty($coupons) ? implode(", ", $coupons) : 'none') . "',
+                    'items': " . wp_json_encode($cart_items) . "
                 },
-                'customer': <?php echo wp_json_encode(CustomDatalayerHelperFunctions::get_customer_info(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>, // Secure JSON encoding for customer info
-                'traffic_source': <?php echo wp_json_encode(CustomDatalayerHelperFunctions::get_traffic_source_info(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?> // Secure JSON encoding for traffic source info
+                'customer': $customer_info,
+                'traffic_source': $traffic_source
             });
-        </script>
-        <?php
+        ";
+
+        // Register and enqueue the inline script
+        wp_register_script('custom_datalayer_woo_begin_checkout_js', false, [], null, true);
+        wp_enqueue_script('custom_datalayer_woo_begin_checkout_js');
+        wp_add_inline_script('custom_datalayer_woo_begin_checkout_js', $inline_script);
     }
 });
